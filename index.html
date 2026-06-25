@@ -626,7 +626,9 @@
             }
 
             const readerBody = document.getElementById('reader-body');
-            while (readerBody.scrollHeight <= readerBody.clientHeight + 100 && loadedMaxChapterIdx < currentChapters.length - 1) {
+            const targetOffset = currentBook ? currentBook.scrollOffset || 0 : 0;
+            const minRequiredHeight = targetOffset + readerBody.clientHeight + 100;
+            while (readerBody.scrollHeight <= minRequiredHeight && loadedMaxChapterIdx < currentChapters.length - 1) {
                 loadedMaxChapterIdx++;
                 this.appendChapterToDom(loadedMaxChapterIdx);
             }
@@ -728,9 +730,9 @@
                 let activeIdx = currentChapterIdx;
                 for (let block of chapterBlocks) {
                     const blockTop = block.offsetTop;
-                    const blockHeight = block.offsetHeight;
-                    if (scrollTop + (clientHeight / 2) >= blockTop && scrollTop + (clientHeight / 2) <= blockTop + blockHeight) {
+                    if (blockTop <= scrollTop + 20) {
                         activeIdx = parseInt(block.getAttribute('data-idx'));
+                    } else {
                         break;
                     }
                 }
@@ -766,7 +768,8 @@
             bm.style.display = show ? 'flex' : 'none';
         },
         exitReader() {
-            // 退出时再强制性精准保存一次当前像素坐标
+            // 退出时先刷新 pending 的进度保存，再强制性精准保存一次当前像素坐标
+            this.flushSaveReadingProgress();
             this.saveReadingProgress(document.getElementById('reader-body').scrollTop);
 
             document.getElementById('top-menu').style.display = 'none';
