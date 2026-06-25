@@ -626,11 +626,12 @@
             }
 
             const readerBody = document.getElementById('reader-body');
-            const targetOffset = currentBook ? currentBook.scrollOffset || 0 : 0;
-            const minRequiredHeight = targetOffset + readerBody.clientHeight + 100;
-            // 加载足够的内容以支持滚动恢复，添加最大加载章节数限制避免加载过多
+            const targetOffset = currentBook ? (currentBook.scrollOffset || 0) : 0;
+            const minRequiredHeight = targetOffset + readerBody.clientHeight + 200;
+            
+            // 积极预加载内容以支持目标滚动位置，增加预加载数量
             let loadAttempts = 0;
-            while (readerBody.scrollHeight < minRequiredHeight && loadedMaxChapterIdx < currentChapters.length - 1 && loadAttempts < 20) {
+            while (readerBody.scrollHeight < minRequiredHeight && loadedMaxChapterIdx < currentChapters.length - 1 && loadAttempts < 30) {
                 loadedMaxChapterIdx++;
                 this.appendChapterToDom(loadedMaxChapterIdx);
                 loadAttempts++;
@@ -641,24 +642,46 @@
             const progress = (((currentChapterIdx) / currentChapters.length) * 100).toFixed(1);
             document.getElementById('sb-progress').innerText = `${progress}%`;
 
-            // 精准像素级位置无缝恢复 - 使用更长的延迟确保 DOM 完全渲染
+            // 精准像素级位置无缝恢复 - 使用递归 requestAnimationFrame 策略确保内容足够
+            let restoreAttempts = 0;
             const restoreScrollPosition = () => {
-                let targetOffset = currentBook.scrollOffset || 0;
+                let targetOffset = currentBook ? (currentBook.scrollOffset || 0) : 0;
+                
+                // 如果目标偏移量为 0 但在非首章，跳到当前章节开头
                 if (targetOffset === 0 && currentChapterIdx > 0) {
                     const currentBlock = document.getElementById(`ch-block-${currentChapterIdx}`);
                     if (currentBlock) {
                         targetOffset = currentBlock.offsetTop;
                     }
                 }
-                // 确保滚动位置不超过可滚动的最大值
-                const maxScroll = readerBody.scrollHeight - readerBody.clientHeight;
-                targetOffset = Math.min(targetOffset, Math.max(0, maxScroll));
+                
+                const maxScroll = Math.max(0, readerBody.scrollHeight - readerBody.clientHeight);
+                
+                // 如果当前内容仍不足以支持目标位置，继续加载（最多重试 10 次）
+                if (maxScroll < targetOffset && loadedMaxChapterIdx < currentChapters.length - 1 && restoreAttempts < 10) {
+                    restoreAttempts++;
+                    // 一次性加载多个章节
+                    for (let i = 0; i < 3 && loadedMaxChapterIdx < currentChapters.length - 1; i++) {
+                        loadedMaxChapterIdx++;
+                        this.appendChapterToDom(loadedMaxChapterIdx);
+                    }
+                    // 继续尝试
+                    requestAnimationFrame(restoreScrollPosition);
+                    return;
+                }
+                
+                // 确保不超出最大可滚动范围
+                targetOffset = Math.max(0, Math.min(targetOffset, maxScroll));
+                
+                // 设置最终的滚动位置
                 readerBody.scrollTop = targetOffset;
-                isInitialLoading = false; 
+                isInitialLoading = false;
             };
             
-            // 使用多次延迟确保 DOM 完全渲染，特别是对于大量章节的情况
-            setTimeout(restoreScrollPosition, 100);
+            // 使用双层 requestAnimationFrame 确保 DOM 完全渲染后再恢复位置
+            requestAnimationFrame(() => {
+                requestAnimationFrame(restoreScrollPosition);
+            });
         },
         appendChapterToDom(idx) {
             const container = document.getElementById('reader-content');
