@@ -625,6 +625,12 @@
                 this.appendChapterToDom(loadedMaxChapterIdx);
             }
 
+            const readerBody = document.getElementById('reader-body');
+            while (readerBody.scrollHeight <= readerBody.clientHeight + 100 && loadedMaxChapterIdx < currentChapters.length - 1) {
+                loadedMaxChapterIdx++;
+                this.appendChapterToDom(loadedMaxChapterIdx);
+            }
+
             const chapter = currentChapters[currentChapterIdx];
             document.getElementById('sb-title').innerText = chapter.title;
             const progress = (((currentChapterIdx) / currentChapters.length) * 100).toFixed(1);
