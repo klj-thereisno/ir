@@ -341,8 +341,10 @@
     };
 
     const ConfigManager = {
+        currentConfig: { time: true, title: true, progress: true, pin: "" },
         async load() {
             const cfg = await dbConfigs.getItem('global_config') || { time: true, title: true, progress: true, pin: "" };
+            this.currentConfig = cfg;
             document.getElementById('cfg-time').checked = cfg.time;
             document.getElementById('cfg-title').checked = cfg.title;
             document.getElementById('cfg-progress').checked = cfg.progress;
@@ -356,6 +358,18 @@
             document.getElementById('sb-title').style.display = cfg.title ? 'inline' : 'none';
             document.getElementById('sb-progress').style.display = cfg.progress ? 'inline' : 'none';
         },
+        restore() {
+            const cfg = this.currentConfig;
+            document.getElementById('cfg-time').checked = cfg.time;
+            document.getElementById('cfg-title').checked = cfg.title;
+            document.getElementById('cfg-progress').checked = cfg.progress;
+            document.getElementById('cfg-pin').value = cfg.pin || "";
+            this.apply(cfg);
+        },
+        cancel() {
+            this.restore();
+            ModalManager.close('settings-modal');
+        },
         async save() {
             const cfg = {
                 time: document.getElementById('cfg-time').checked,
@@ -364,6 +378,7 @@
                 pin: document.getElementById('cfg-pin').value || ""
             };
             await dbConfigs.setItem('global_config', cfg);
+            this.currentConfig = cfg;
             LockManager.setPIN(cfg.pin);
             this.apply(cfg);
             ModalManager.close('settings-modal');
@@ -384,7 +399,7 @@
                 modal.addEventListener('click', (event) => {
                     if (event.target === modal) {
                         if (modal.id === 'settings-modal') {
-                            ConfigManager.save();
+                            ConfigManager.cancel();
                         } else {
                             modal.style.display = 'none';
                         }
