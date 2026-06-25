@@ -264,6 +264,9 @@
     let currentSortField = "recent";
     let currentSortOrder = "desc";
     let isInitialLoading = false; // 是否处于进入小说的恢复滚动状态中
+    let lastScrollTop = 0;
+    let scrollFrameRequested = false;
+    let saveProgressTimer = null;
 
     window.addEventListener('DOMContentLoaded', async () => {
         dbBooks = localforage.createInstance({ name: "Reader_Asset_Books_2026" });
@@ -290,51 +293,17 @@
             document.getElementById('sb-time').innerText = now.toTimeString().substring(0, 5);
         }, 1000);
 
-        // 核心滚动流处理器：实现真正的无限向下追加逻辑，并实时精准保存绝对像素位置
+        // 核心滚动流处理器：实现真正的无限向下追加逻辑，并精准保存绝对像素位置
         document.getElementById('reader-body').addEventListener('scroll', function() {
             if (currentChapters.length === 0 || isInitialLoading) return;
 
-            const scrollTop = this.scrollTop;
-            const scrollHeight = this.scrollHeight;
-            const clientHeight = this.clientHeight;
-
-            // 1. 精准实时记忆绝对像素高度（只要用户在看，每一秒都在无缝记住位置）
-            ReaderEngine.saveReadingProgress(scrollTop);
-
-            // 2. 动态追加下一章：当距离容器底部小于 100 像素时，悄悄往后追加新章节内容
-            if (scrollHeight - scrollTop <= clientHeight + 100) {
-                if (loadedMaxChapterIdx < currentChapters.length - 1) {
-                    loadedMaxChapterIdx++;
-                    ReaderEngine.appendChapterToDom(loadedMaxChapterIdx);
-                }
-            }
-            if (scrollTop <= 100) {
-                if (loadedMinChapterIdx > 0) {
-                    loadedMinChapterIdx--;
-                    const addedBlock = ReaderEngine.appendChapterToDom(loadedMinChapterIdx);
-                    if (addedBlock) {
-                        document.getElementById('reader-body').scrollTop = scrollTop + addedBlock.offsetHeight;
-                    }
-                }
-            }
-
-            // 3. 动态感知用户当前视线在读哪一章，自动更新状态栏标题和总体进度百分比
-            const chapterBlocks = document.querySelectorAll('.chapter-block');
-            let activeIdx = currentChapterIdx;
-            for (let block of chapterBlocks) {
-                const blockTop = block.offsetTop;
-                const blockHeight = block.offsetHeight;
-                // 当章节区域跨越了当前视窗的中间位置，即认为视线进入了该章节
-                if (scrollTop + (clientHeight / 2) >= blockTop && scrollTop + (clientHeight / 2) <= blockTop + blockHeight) {
-                    activeIdx = parseInt(block.getAttribute('data-idx'));
-                    break;
-                }
-            }
-            if (activeIdx !== currentChapterIdx) {
-                currentChapterIdx = activeIdx;
-                document.getElementById('sb-title').innerText = currentChapters[currentChapterIdx].title;
-                const progress = (((currentChapterIdx) / currentChapters.length) * 100).toFixed(1);
-                document.getElementById('sb-progress').innerText = `${progress}%`;
+            lastScrollTop = this.scrollTop;
+            if (!scrollFrameRequested) {
+                scrollFrameRequested = true;
+                requestAnimationFrame(() => {
+                    scrollFrameRequested = false;
+                    ReaderEngine.handleScroll(lastScrollTop, this.scrollHeight, this.clientHeight);
+                });
             }
         });
     });
@@ -707,6 +676,50 @@
         nextPage() {
             document.getElementById('reader-body').scrollTop += window.innerHeight * 0.75;
         },
+        handleScroll(scrollTop, scrollHeight, clientHeight) {
+            try {
+                if (currentChapters.length === 0 || isInitialLoading) return;
+
+                // 节流保存进度，避免频繁写入造成卡顿或错误
+                this.scheduleSaveReadingProgress(scrollTop);
+
+                if (scrollHeight - scrollTop <= clientHeight + 100) {
+                    if (loadedMaxChapterIdx < currentChapters.length - 1) {
+                        loadedMaxChapterIdx++;
+                        this.appendChapterToDom(loadedMaxChapterIdx);
+                    }
+                }
+
+                if (scrollTop <= 100) {
+                    if (loadedMinChapterIdx > 0) {
+                        loadedMinChapterIdx--;
+                        const addedBlock = this.appendChapterToDom(loadedMinChapterIdx);
+                        if (addedBlock) {
+                            document.getElementById('reader-body').scrollTop = scrollTop + addedBlock.offsetHeight;
+                        }
+                    }
+                }
+
+                const chapterBlocks = document.querySelectorAll('.chapter-block');
+                let activeIdx = currentChapterIdx;
+                for (let block of chapterBlocks) {
+                    const blockTop = block.offsetTop;
+                    const blockHeight = block.offsetHeight;
+                    if (scrollTop + (clientHeight / 2) >= blockTop && scrollTop + (clientHeight / 2) <= blockTop + blockHeight) {
+                        activeIdx = parseInt(block.getAttribute('data-idx'));
+                        break;
+                    }
+                }
+                if (activeIdx !== currentChapterIdx) {
+                    currentChapterIdx = activeIdx;
+                    document.getElementById('sb-title').innerText = currentChapters[currentChapterIdx].title;
+                    const progress = (((currentChapterIdx) / currentChapters.length) * 100).toFixed(1);
+                    document.getElementById('sb-progress').innerText = `${progress}%`;
+                }
+            } catch (err) {
+                console.error('ReaderEngine.handleScroll error', err);
+            }
+        },
         // 菜单底部的上拉/下拉跳章按钮逻辑
         prevChapterButton() { 
             if (currentChapterIdx > 0) { 
@@ -767,12 +780,26 @@
             }
         },
         async saveReadingProgress(customScrollTop) {
-            if(currentBook) {
+            if (currentBook) {
                 currentBook.progressChapterIdx = currentChapterIdx;
                 currentBook.scrollOffset = customScrollTop || 0; // 精准记忆当前绝对像素高度位置
                 currentBook.replaceRules = replaceRules;
                 await dbBooks.setItem(currentBook.id, currentBook);
             }
+        },
+        scheduleSaveReadingProgress(scrollTop) {
+            if (saveProgressTimer) clearTimeout(saveProgressTimer);
+            saveProgressTimer = setTimeout(() => {
+                this.saveReadingProgress(lastScrollTop);
+                saveProgressTimer = null;
+            }, 400);
+        },
+        flushSaveReadingProgress() {
+            if (saveProgressTimer) {
+                clearTimeout(saveProgressTimer);
+                saveProgressTimer = null;
+            }
+            this.saveReadingProgress(lastScrollTop);
         },
         applyReplace() {
             const from = document.getElementById('rep-source').value;
