@@ -15,11 +15,15 @@
     <style>
         @font-face {
             font-family: 'CustomSong';
-            src: local('Songti SC');
+            src: local('Songti SC'), local('STSong'), local('SimSun'), local('Songti TC'), local('Songti');
+            font-weight: normal;
+            font-style: normal;
         }
         @font-face {
             font-family: 'CustomKai';
-            src: local('Kaiti SC');
+            src: local('Kaiti SC'), local('STKaiti'), local('KaiTi'), local('Kaiti');
+            font-weight: normal;
+            font-style: normal;
         }
 
         :root {
@@ -264,6 +268,21 @@
         dbBooks = localforage.createInstance({ name: "Reader_Asset_Books_2026" });
         dbConfigs = localforage.createInstance({ name: "Reader_Asset_Configs_2026" });
         await ConfigManager.load();
+        ModalManager.init();
+
+        const cfgInputs = ['cfg-time', 'cfg-title', 'cfg-progress'];
+        cfgInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    ConfigManager.apply({
+                        time: document.getElementById('cfg-time').checked,
+                        title: document.getElementById('cfg-title').checked,
+                        progress: document.getElementById('cfg-progress').checked
+                    });
+                });
+            }
+        });
 
         setInterval(() => {
             const now = new Date();
@@ -347,7 +366,13 @@
             document.getElementById('cfg-progress').checked = cfg.progress;
             document.getElementById('cfg-pin').value = cfg.pin || "";
             LockManager.setPIN(cfg.pin);
+            this.apply(cfg);
             LibraryManager.renderShelf();
+        },
+        apply(cfg) {
+            document.getElementById('sb-time').style.display = cfg.time ? 'inline' : 'none';
+            document.getElementById('sb-title').style.display = cfg.title ? 'inline' : 'none';
+            document.getElementById('sb-progress').style.display = cfg.progress ? 'inline' : 'none';
         },
         async save() {
             const cfg = {
@@ -358,13 +383,33 @@
             };
             await dbConfigs.setItem('global_config', cfg);
             LockManager.setPIN(cfg.pin);
+            this.apply(cfg);
             ModalManager.close('settings-modal');
         }
     };
 
     const ModalManager = {
-        open(id) { document.getElementById(id).style.display = 'flex'; },
-        close(id) { document.getElementById(id).style.display = 'none'; }
+        open(id) {
+            const modal = document.getElementById(id);
+            modal.style.display = 'flex';
+        },
+        close(id) {
+            const modal = document.getElementById(id);
+            modal.style.display = 'none';
+        },
+        init() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        if (modal.id === 'settings-modal') {
+                            ConfigManager.save();
+                        } else {
+                            modal.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        }
     };
 
     const LibraryManager = {
@@ -664,7 +709,10 @@
             root.style.setProperty(prop, `${(cur + delta).toFixed(1)}${type==='line'?'':'em'}`);
         },
         changeFont(fontName) {
-            document.documentElement.style.setProperty('--font-family', fontName === 'system' ? '-apple-system, sans-serif' : fontName);
+            const fontValue = fontName === 'system'
+                ? '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif'
+                : `${fontName}, "PingFang SC", sans-serif`;
+            document.documentElement.style.setProperty('--font-family', fontValue);
         },
         changeTheme(color) {
             document.documentElement.style.setProperty('--bg-color', color);
