@@ -258,6 +258,7 @@
     let currentBook = null;
     let currentChapters = [];
     let currentChapterIdx = 0;
+    let loadedMinChapterIdx = 0;
     let loadedMaxChapterIdx = 0; // 当前DOM中加载到的最大章节索引
     let replaceRules = [];
     let currentSortField = "recent";
@@ -305,6 +306,15 @@
                 if (loadedMaxChapterIdx < currentChapters.length - 1) {
                     loadedMaxChapterIdx++;
                     ReaderEngine.appendChapterToDom(loadedMaxChapterIdx);
+                }
+            }
+            if (scrollTop <= 100) {
+                if (loadedMinChapterIdx > 0) {
+                    loadedMinChapterIdx--;
+                    const addedBlock = ReaderEngine.appendChapterToDom(loadedMinChapterIdx);
+                    if (addedBlock) {
+                        document.getElementById('reader-body').scrollTop = scrollTop + addedBlock.offsetHeight;
+                    }
                 }
             }
 
@@ -600,6 +610,7 @@
             document.getElementById('reader-view').classList.add('active');
             replaceRules = currentBook.replaceRules || [];
             currentChapterIdx = currentBook.progressChapterIdx || 0;
+            loadedMinChapterIdx = currentChapterIdx;
             loadedMaxChapterIdx = currentChapterIdx; // 首次加载以进度章节为最高位
             currentChapters = currentBook.chapters || [];
             
@@ -613,8 +624,15 @@
             const container = document.getElementById('reader-content');
             container.innerHTML = ""; // 彻底清空原有页面
 
-            // 核心修复：初始化时顺便把它的“下一章”也一起埋入DOM流，防止用户刚好在上一章末尾时下方没有内容承接
+            // 初始化时尽可能渲染当前章节前后范围，方便向上/向下滑动时自然加载
+            if (currentChapterIdx > 0) {
+                loadedMinChapterIdx = currentChapterIdx - 1;
+                this.appendChapterToDom(loadedMinChapterIdx);
+            } else {
+                loadedMinChapterIdx = currentChapterIdx;
+            }
             this.appendChapterToDom(currentChapterIdx);
+            loadedMaxChapterIdx = currentChapterIdx;
             if (currentChapterIdx < currentChapters.length - 1) {
                 loadedMaxChapterIdx = currentChapterIdx + 1;
                 this.appendChapterToDom(loadedMaxChapterIdx);
@@ -627,7 +645,13 @@
 
             // 精准像素级位置无缝恢复
             setTimeout(() => {
-                const targetOffset = currentBook.scrollOffset || 0;
+                let targetOffset = currentBook.scrollOffset || 0;
+                if (targetOffset === 0 && currentChapterIdx > 0) {
+                    const currentBlock = document.getElementById(`ch-block-${currentChapterIdx}`);
+                    if (currentBlock) {
+                        targetOffset = currentBlock.offsetTop;
+                    }
+                }
                 document.getElementById('reader-body').scrollTop = targetOffset;
                 isInitialLoading = false; 
             }, 60);
@@ -658,7 +682,24 @@
             paragraphs.forEach(p => { htmlOutput += `<p>${p}</p>`; });
             block.innerHTML = htmlOutput;
 
-            container.appendChild(block);
+            const blocks = Array.from(container.querySelectorAll('.chapter-block'));
+            if (blocks.length === 0) {
+                container.appendChild(block);
+            } else {
+                let inserted = false;
+                for (let existing of blocks) {
+                    const existingIdx = parseInt(existing.getAttribute('data-idx'));
+                    if (idx < existingIdx) {
+                        container.insertBefore(block, existing);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    container.appendChild(block);
+                }
+            }
+            return block;
         },
         prevPage() {
             document.getElementById('reader-body').scrollTop -= window.innerHeight * 0.75;
@@ -786,16 +827,25 @@
                 currentChapters.forEach((ch, idx) => {
                     const li = document.createElement('li');
                     li.innerText = ch.title;
-                    if(idx === currentChapterIdx) li.style.color = 'var(--accent-color)';
+                    if(idx === currentChapterIdx) {
+                        li.style.color = 'var(--accent-color)';
+                        li.dataset.currentChapter = 'true';
+                    }
                     li.onclick = () => { 
                         currentChapterIdx = idx; 
+                        loadedMinChapterIdx = currentChapterIdx;
                         loadedMaxChapterIdx = currentChapterIdx;
+                        if (currentBook) currentBook.scrollOffset = 0;
                         this.initReaderDom(); 
                         ModalManager.close('nav-modal'); 
                         this.toggleMenu(); 
                     };
                     list.appendChild(li);
                 });
+                const currentItem = list.querySelector('[data-current-chapter="true"]');
+                if (currentItem) {
+                    currentItem.scrollIntoView({ block: 'center', behavior: 'auto' });
+                }
             } else if(tab === 'mark') {
                 (currentBook.bookmarks || []).forEach((m, i) => {
                     const li = document.createElement('li');
