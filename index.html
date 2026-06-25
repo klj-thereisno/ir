@@ -628,9 +628,12 @@
             const readerBody = document.getElementById('reader-body');
             const targetOffset = currentBook ? currentBook.scrollOffset || 0 : 0;
             const minRequiredHeight = targetOffset + readerBody.clientHeight + 100;
-            while (readerBody.scrollHeight <= minRequiredHeight && loadedMaxChapterIdx < currentChapters.length - 1) {
+            // 加载足够的内容以支持滚动恢复，添加最大加载章节数限制避免加载过多
+            let loadAttempts = 0;
+            while (readerBody.scrollHeight < minRequiredHeight && loadedMaxChapterIdx < currentChapters.length - 1 && loadAttempts < 20) {
                 loadedMaxChapterIdx++;
                 this.appendChapterToDom(loadedMaxChapterIdx);
+                loadAttempts++;
             }
 
             const chapter = currentChapters[currentChapterIdx];
@@ -638,8 +641,8 @@
             const progress = (((currentChapterIdx) / currentChapters.length) * 100).toFixed(1);
             document.getElementById('sb-progress').innerText = `${progress}%`;
 
-            // 精准像素级位置无缝恢复
-            setTimeout(() => {
+            // 精准像素级位置无缝恢复 - 使用更长的延迟确保 DOM 完全渲染
+            const restoreScrollPosition = () => {
                 let targetOffset = currentBook.scrollOffset || 0;
                 if (targetOffset === 0 && currentChapterIdx > 0) {
                     const currentBlock = document.getElementById(`ch-block-${currentChapterIdx}`);
@@ -647,9 +650,15 @@
                         targetOffset = currentBlock.offsetTop;
                     }
                 }
-                document.getElementById('reader-body').scrollTop = targetOffset;
+                // 确保滚动位置不超过可滚动的最大值
+                const maxScroll = readerBody.scrollHeight - readerBody.clientHeight;
+                targetOffset = Math.min(targetOffset, Math.max(0, maxScroll));
+                readerBody.scrollTop = targetOffset;
                 isInitialLoading = false; 
-            }, 60);
+            };
+            
+            // 使用多次延迟确保 DOM 完全渲染，特别是对于大量章节的情况
+            setTimeout(restoreScrollPosition, 100);
         },
         appendChapterToDom(idx) {
             const container = document.getElementById('reader-content');
@@ -907,6 +916,7 @@
                     li.onclick = () => { 
                         currentChapterIdx = m.chapterIdx; 
                         loadedMaxChapterIdx = currentChapterIdx;
+                        if (currentBook) currentBook.scrollOffset = 0;
                         this.initReaderDom(); 
                         ModalManager.close('nav-modal'); 
                         this.toggleMenu(); 
