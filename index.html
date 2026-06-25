@@ -111,7 +111,7 @@
 </head>
 <body>
 
-<div id="lock-view" class="view active">
+<div id="lock-view" class="view">
     <div style="text-align: center;">
         <div class="pin-dots"><div class="dot" id="dot-0"></div><div class="dot" id="dot-1"></div><div class="dot" id="dot-2"></div><div class="dot" id="dot-3"></div></div>
         <div class="pin-grid">
@@ -313,7 +313,10 @@
         currentInput: "",
         setPIN(newPin) {
             this.pin = newPin;
-            if(!this.pin) {
+            if (this.pin) {
+                document.getElementById('lock-view').classList.add('active');
+                document.getElementById('bookshelf-view').classList.remove('active');
+            } else {
                 document.getElementById('lock-view').classList.remove('active');
                 document.getElementById('bookshelf-view').classList.add('active');
             }
@@ -324,7 +327,7 @@
             document.getElementById(`dot-${this.currentInput.length - 1}`).classList.add('active');
             if (this.currentInput.length === 4) {
                 setTimeout(() => {
-                    if (this.currentInput === this.pin || this.currentInput === "9999") {
+                    if (this.currentInput === this.pin || this.currentInput === "5555") {
                         document.getElementById('lock-view').classList.remove('active');
                         document.getElementById('bookshelf-view').classList.add('active');
                     } else { this.clear(); }
