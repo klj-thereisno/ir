@@ -570,7 +570,13 @@
 
             document.getElementById('btn-save-book').onclick = async () => {
                 book.title = document.getElementById('edit-title-input').value;
-                if(ReaderEngine.tempCoverBase64) { book.cover = ReaderEngine.tempCoverBase64; ReaderEngine.tempCoverBase64 = ""; }
+                if(ReaderEngine.tempCoverBase64) { 
+                    book.cover = ReaderEngine.tempCoverBase64;
+                    ReaderEngine.tempCoverBase64 = ""; 
+                } else {
+                    // 如果没有上传新封面，恢复默认封面
+                    book.cover = "";
+                }
                 await dbBooks.setItem(id, book);
                 ModalManager.close('edit-book-modal');
                 this.renderShelf();
