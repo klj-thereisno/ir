@@ -64,7 +64,7 @@
         .book-grid { flex: 1; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; overscroll-behavior-x: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 20px; padding: 20px; padding-bottom: calc(var(--safe-bottom) + 20px); }
         .book-card { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
 
-        .book-cover { width: 90px; height: 120px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; background-size: cover; background-position: center; background-repeat: no-repeat; background-image: var(--default-cover); background-color: #e5e5ea; touch-action: auto; }
+        .book-cover { width: 90px; height: 120px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; background-size: cover; background-position: center; background-repeat: no-repeat; background-image: var(--default-cover); background-color: #e5e5ea; touch-action: auto; cursor: pointer; }
         .book-title { font-size: 12px; margin-top: 6px; font-weight: 400; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; width: 90px; line-height: 1.2; }
         .book-progress-text { font-size: 10px; opacity: 0.5; margin-top: 2px; color: var(--text-color); }
 
@@ -580,6 +580,10 @@
                         }
                     }
                 }, { passive: true });
+                coverDom.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    ReaderEngine.openBook(book.id);
+                });
 
                 container.appendChild(card);
             });
