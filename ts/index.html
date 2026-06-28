@@ -306,6 +306,13 @@
         reader.readAsArrayBuffer(file);
     });
 
+    function escapeXml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     // 核心安全重构：彻底解决苹果图书 XML 自闭合报错 Bug
     async function generateStrictEpub3(title, author, chapters, coverBlob, coverType, coverExt) {
         const zip = new JSZip();
@@ -336,6 +343,7 @@
         let manifestItems = '';
         let spineItems = '';
         let htmlNavLinks = '';
+        let ncxNavPoints = '';
 
         if (coverBlob) {
             manifestItems += `    <item id="cover-image" href="cover.${coverExt}" media-type="${coverType}" properties="cover-image" />\n`;
@@ -345,9 +353,8 @@
         chapters.forEach((chap, index) => {
             const id = `chap_${index + 1}`;
             const hrefPath = `Text/${id}.xhtml`; // 统一后缀名防止阅读器底层混淆
-
-            const safeContent = chap.content
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            const safeTitle = escapeXml(chap.title);
+            const safeContent = escapeXml(chap.content)
                 .split('\n')
                 .map(line => line.trim() ? `<p>${line.trim()}</p>` : '')
                 .join('\n');
@@ -358,14 +365,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <title>${chap.title}</title>
+    <title>${safeTitle}</title>
     <style type="text/css">
         h1 { text-align: center; margin-top: 2em; margin-bottom: 1em; font-size: 1.4em; }
         p { text-indent: 2em; line-height: 1.6; margin: 0.6em 0; font-size: 1.1em; }
     </style>
 </head>
 <body>
-    <h1>${chap.title}</h1>
+    <h1>${safeTitle}</h1>
     ${safeContent}
 </body>
 </html>`;
@@ -374,7 +381,11 @@
 
             manifestItems += `    <item id="${id}" href="${hrefPath}" media-type="application/xhtml+xml" />\n`;
             spineItems += `    <itemref idref="${id}" />\n`;
-            htmlNavLinks += `        <li><a href="${hrefPath}">${chap.title}</a></li>\n`;
+            htmlNavLinks += `        <li><a href="${hrefPath}">${safeTitle}</a></li>\n`;
+            ncxNavPoints += `        <navPoint id="navpoint-${index + 1}" playOrder="${index + 1}">
+            <navLabel><text>${safeTitle}</text></navLabel>
+            <content src="${hrefPath}" />
+        </navPoint>\n`;
         });
 
         // 4. 生成 ePUB 3.0 的唯一官方核心 HTML 导航文件 (nav.xhtml)，同样严格闭合
@@ -395,23 +406,38 @@ ${htmlNavLinks}        </ol>
 </html>`;
         zip.file("nav.xhtml", navHtmlContent);
 
+        const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+    <head>
+        <meta name="dtb:uid" content="${uuid}" />
+        <meta name="dtb:depth" content="1" />
+        <meta name="dtb:totalPageCount" content="0" />
+        <meta name="dtb:maxPageNumber" content="0" />
+    </head>
+    <docTitle><text>${escapeXml(title)}</text></docTitle>
+    <navMap>
+${ncxNavPoints}    </navMap>
+</ncx>`;
+        zip.file("toc.ncx", ncxContent);
+
         // 5. 声明 properties="nav"，这是唤醒苹果底部系统原生目录的“最高权限指令”
-        manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` + manifestItems;
+        manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` +
+            `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />\n` + manifestItems;
 
         // 6. 生成没有任何语法漏洞的现代化 content.opf (根目录)
         const coverMeta = coverBlob ? `\n        <meta property="轄:cover-image">cover-image</meta>` : '';
         const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">
     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-        <dc:title>${title}</dc:title>
-        <dc:creator id="aut">${author}</dc:creator>
+        <dc:title>${escapeXml(title)}</dc:title>
+        <dc:creator id="aut">${escapeXml(author)}</dc:creator>
         <dc:language>zh-CN</dc:language>
         <dc:identifier id="bookid">${uuid}</dc:identifier>
         <meta property="dcterms:modified">${new Date().toISOString().split('.')[0] + 'Z'}</meta>${coverMeta}
     </metadata>
     <manifest>
 ${manifestItems}    </manifest>
-    <spine>
+    <spine toc="ncx">
 ${spineItems}    </spine>
 </package>`;
         zip.file("content.opf", contentOpf);
