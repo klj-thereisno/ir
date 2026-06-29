@@ -425,7 +425,7 @@ ${ncxNavPoints}    </navMap>
             `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />\n` + manifestItems;
 
         // 6. 生成没有任何语法漏洞的现代化 content.opf (根目录)
-        const coverMeta = coverBlob ? `\n        <meta property="轄:cover-image">cover-image</meta>` : '';
+        const coverMeta = coverBlob ? `\n        <meta name="cover" content="cover-image"/>` : '';
         const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">
     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
