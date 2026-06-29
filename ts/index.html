@@ -795,10 +795,10 @@ ${spineItems}    </spine>
 </package>`;
             zip.file("content.opf", contentOpf);
 
-            // 7. 防 Safari 二进制拦截混淆导出
+            // 7. 以真正的 EPUB 格式导出，避免阅读器把文件当普通压缩包处理
             const baseBlob = await zip.generateAsync({ type: "blob" });
-            const blob = new Blob([baseBlob], { type: "application/octet-stream" });
-            saveAs(blob, `${title}.epub.bin`);
+            const blob = new Blob([baseBlob], { type: "application/epub+zip" });
+            saveAs(blob, `${title}.epub`);
         }
     </script>
 </body>
