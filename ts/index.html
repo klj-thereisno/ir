@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TXT 本地智能转 ePUB 工具</title>
-    <link rel="apple-touch-icon" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书本地智能转换与清洗工具</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <style>
@@ -19,348 +19,696 @@
             --danger-color: #ff453a;
             --danger-hover: #ff3b30;
         }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             padding: 20px;
             max-width: 650px;
             margin: 0 auto;
         }
+
         .card {
             background: var(--card-bg);
             padding: 24px;
             border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
         }
-        h2 { margin-top: 0; font-size: 22px; text-align: center; }
-        .subtitle { font-size: 13px; color: var(--text-secondary); text-align: center; margin: -10px 0 20px 0; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
-        input[type="text"], input[type="file"] {
-            width: 100%; box-sizing: border-box; padding: 12px;
-            border-radius: 8px; border: 1px solid var(--border-color); font-size: 15px;
+
+        h2 {
+            margin-top: 0;
+            font-size: 22px;
+            text-align: center;
         }
-        input[type="text"]:focus { border-color: var(--primary-color); outline: none; }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: -10px 0 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 15px;
+            background: white;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            margin-top: 6px;
+            cursor: pointer;
+        }
 
         .replace-section {
             border-top: 1px solid #e5e5ea;
             margin-top: 20px;
             padding-top: 16px;
         }
+
         .replace-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
+
         .add-rule-btn {
-            background: #e3f2fd; color: var(--primary-color); border: none;
-            padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;
+            background: #e3f2fd;
+            color: var(--primary-color);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
         }
-        .add-rule-btn:hover { background: #d0e8ff; }
-        .rule-list { margin-bottom: 16px; }
+
+        .add-rule-btn:hover {
+            background: #d0e8ff;
+        }
+
+        .rule-list {
+            margin-bottom: 16px;
+        }
+
         .rule-item {
-            display: flex; gap: 8px; margin-bottom: 8px; align-items: center; background: #fafafa; padding: 6px; border-radius: 8px; border: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+            background: #fafafa;
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid #eee;
         }
+
         .rule-item input[type="text"] {
-            flex: 1; padding: 8px 10px; font-size: 14px;
-            border: 1px solid var(--border-color); border-radius: 6px; background: white;
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
         }
+
         .regex-toggle {
-            display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; cursor: pointer; user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
         }
-        .regex-toggle input { cursor: pointer; }
+
+        .regex-toggle input {
+            cursor: pointer;
+        }
+
         .del-rule-btn {
-            background: none; border: none; color: var(--danger-color);
-            font-size: 22px; cursor: pointer; padding: 0 6px; line-height: 1;
+            background: none;
+            border: none;
+            color: var(--danger-color);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 6px;
+            line-height: 1;
         }
-        .del-rule-btn:hover { color: var(--danger-hover); }
+
+        .del-rule-btn:hover {
+            color: var(--danger-hover);
+        }
 
         .convert-btn {
-            width: 100%; padding: 14px; background: var(--primary-color); color: white;
-            border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
         }
-        .convert-btn:hover { background: var(--primary-hover); }
-        .convert-btn:disabled { background: #999; cursor: not-allowed; }
-        #status { text-align: center; color: var(--text-secondary); margin-top: 12px; font-size: 14px; }
+
+        .convert-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .convert-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        #status {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            font-size: 14px;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="card">
-    <h2>TXT 本地智能转 ePUB 3.0 工具</h2>
-    <div class="subtitle">完美修复 XML 闭合 Bug · 现代规范 HTML5 导航 · 苹果原生目录秒跳转</div>
+    <div class="card">
+        <h2>图书本地智能转换与清洗工具</h2>
+        <div class="subtitle">TXT/ePUB 双向互转 · 自定义/保持原封面 · 正则表达式清洗 · 离线纯本地</div>
 
-    <div class="form-group">
-        <label>书名</label>
-        <input type="text" id="bookTitle" placeholder="选填，默认使用文件名" />
-    </div>
-    <div class="form-group">
-        <label>作者</label>
-        <input type="text" id="bookAuthor" placeholder="未知"/>
-    </div>
-    <div class="form-group">
-        <label>选择书籍封面（选填，不选则无封面）</label>
-        <input type="file" id="coverFile" accept="image/png, image/jpeg" />
-    </div>
-    <div class="form-group">
-        <label>选择 TXT 小说文件</label>
-        <input type="file" id="txtFile" accept=".txt" />
-    </div>
-
-    <div class="replace-section">
-        <div class="replace-header">
-            <label style="margin-bottom: 0;">内容清洗 / 替换规则</label>
-            <button type="button" class="add-rule-btn" id="addRuleBtn">+ 添加替换项</button>
+        <div class="form-group">
+            <label>选择源书籍文件（支持 .txt 或 .epub）</label>
+            <input type="file" id="sourceFile" accept=".txt, .epub">
         </div>
-        <div class="rule-list" id="ruleList">
-            <div class="rule-item">
-                <input type="text" class="src-text" placeholder="匹配文本 / 正则表达式" />
-                <span style="color:var(--text-secondary)">→</span>
-                <input type="text" class="dst-text" placeholder="替换为 (留空删除)" />
-                <label class="regex-toggle">
-                    <input type="checkbox" class="is-regex" /> 正则
+
+        <div class="form-group">
+            <label>目标导出格式</label>
+            <select id="outputFormat">
+                <option value="epub">打包为 ePUB 电子书</option>
+                <option value="txt">导出为纯文本 TXT</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>书名</label>
+            <input type="text" id="bookTitle" placeholder="选填，默认使用原文件名">
+        </div>
+        <div class="form-group">
+            <label>作者</label>
+            <input type="text" id="bookAuthor" placeholder="选填" value="未知">
+        </div>
+
+        <div id="coverSection" class="form-group">
+            <label>选择书籍封面（仅导出 ePUB 时有效）</label>
+            <input type="file" id="coverFile" accept="image/png, image/jpeg">
+            <div id="keepCoverContainer" style="display: none;">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="keepOriginalCover" checked> 优先保持原 ePUB 封面（若有）
                 </label>
-                <button type="button" class="del-rule-btn" onclick="removeRule(this)">×</button>
             </div>
         </div>
+
+        <div class="replace-section">
+            <div class="replace-header">
+                <label style="margin-bottom: 0;">内容清洗 / 替换规则</label>
+                <button type="button" class="add-rule-btn" id="addRuleBtn">+ 添加替换项</button>
+            </div>
+            <div class="rule-list" id="ruleList">
+                <div class="rule-item">
+                    <input type="text" class="src-text" placeholder="匹配文本 / 正则表达式">
+                    <span style="color:var(--text-secondary)">→</span>
+                    <input type="text" class="dst-text" placeholder="替换为 (留空删除)">
+                    <label class="regex-toggle">
+                        <input type="checkbox" class="is-regex"> 正则
+                    </label>
+                    <button type="button" class="del-rule-btn" onclick="removeRule(this)">×</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="convertBtn" class="convert-btn" disabled>开始转换并下载</button>
+        <div id="status">请先选择一个 TXT 或 ePUB 文件</div>
     </div>
 
-    <button id="convertBtn" class="convert-btn" disabled="disabled">开始转换并下载</button>
-    <div id="status">请先选择一个 TXT 文件</div>
-</div>
+    <script>
+        const sourceFileInput = document.getElementById('sourceFile');
+        const coverFileInput = document.getElementById('coverFile');
+        const outputFormatSelect = document.getElementById('outputFormat');
+        const keepCoverContainer = document.getElementById('keepCoverContainer');
+        const keepOriginalCoverCheckbox = document.getElementById('keepOriginalCover');
+        const convertBtn = document.getElementById('convertBtn');
+        const statusDiv = document.getElementById('status');
+        const addRuleBtn = document.getElementById('addRuleBtn');
+        const ruleList = document.getElementById('ruleList');
+        const coverSection = document.getElementById('coverSection');
 
-<script>
-    const txtFileInput = document.getElementById('txtFile');
-    const coverFileInput = document.getElementById('coverFile');
-    const convertBtn = document.getElementById('convertBtn');
-    const statusDiv = document.getElementById('status');
-    const addRuleBtn = document.getElementById('addRuleBtn');
-    const ruleList = document.getElementById('ruleList');
+        // 缓存从原 ePUB 中提取出来的信息
+        let extractedOriginalCoverBlob = null;
+        let extractedOriginalCoverExt = 'png';
+        let extractedOriginalCoverType = 'image/png';
 
-    txtFileInput.addEventListener('change', () => {
-        convertBtn.disabled = !txtFileInput.files.length;
-    });
+        // 监听输入文件类型变化
+        sourceFileInput.addEventListener('change', async () => {
+            const file = sourceFileInput.files[0];
+            if (!file) {
+                convertBtn.disabled = true;
+                keepCoverContainer.style.display = 'none';
+                return;
+            }
+            convertBtn.disabled = false;
+            statusDiv.innerText = '已选中文件：' + file.name;
 
-    addRuleBtn.addEventListener('click', () => {
-        const item = document.createElement('div');
-        item.className = 'rule-item';
-        item.innerHTML = `
-            <input type="text" class="src-text" placeholder="匹配文本 / 正则表达式" />
+            // 重置原封面暂存
+            extractedOriginalCoverBlob = null;
+
+            // 如果用户上传的是 ePUB 文件，自动尝试解析其元数据和原封面
+            if (file.name.toLowerCase().endsWith('.epub')) {
+                keepCoverContainer.style.display = 'block';
+                statusDiv.innerText = '正在预解析原 ePUB 的封面和信息...';
+                try {
+                    await parseOriginalEpubInfo(file);
+                    statusDiv.innerText = '原 ePUB 解析完毕，可选择是否保留原封面。';
+                } catch (e) {
+                    console.log('预解析原 ePUB 失败，转为常规提取模式', e);
+                    statusDiv.innerText = '选定 ePUB 文件，原封面自动提取失败（将使用默认或新上传封面）。';
+                }
+            } else {
+                keepCoverContainer.style.display = 'none';
+            }
+        });
+
+        // 监听导出格式变化，如果是导出 TXT，则隐藏封面选择框
+        outputFormatSelect.addEventListener('change', () => {
+            if (outputFormatSelect.value === 'txt') {
+                coverSection.style.style.display = 'none';
+            } else {
+                coverSection.style.display = 'block';
+            }
+        });
+
+        addRuleBtn.addEventListener('click', () => {
+            const item = document.createElement('div');
+            item.className = 'rule-item';
+            item.innerHTML = `
+            <input type="text" class="src-text" placeholder="匹配文本 / 正则表达式">
             <span style="color:var(--text-secondary)">→</span>
-            <input type="text" class="dst-text" placeholder="替换为 (留空删除)" />
+            <input type="text" class="dst-text" placeholder="替换为 (留空删除)">
             <label class="regex-toggle">
-                <input type="checkbox" class="is-regex" /> 正则
+                <input type="checkbox" class="is-regex"> 正则
             </label>
             <button type="button" class="del-rule-btn" onclick="removeRule(this)">×</button>
         `;
-        ruleList.appendChild(item);
-    });
+            ruleList.appendChild(item);
+        });
 
-    function removeRule(btn) {
-        btn.parentElement.remove();
-    }
+        function removeRule(btn) {
+            btn.parentElement.remove();
+        }
 
-    // 智能封面绘制（支持长书名换行与楷体，高保真压缩）
-    function drawTextOnCover(imageBlob, title, author) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = URL.createObjectURL(imageBlob);
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width || 160;
-                canvas.height = img.height || 240;
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#000000";
-                ctx.shadowColor = "rgb(255,255,255)";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "top";
+        // 核心解析：从原 ePUB 中提取封面、书名、作者
+        async function parseOriginalEpubInfo(file) {
+            const zip = await JSZip.loadAsync(file);
 
-                const titleFontSize = Math.floor(canvas.width * 0.15);
-                ctx.font = "bold " + titleFontSize + "px Kaiti, STKaiti, '华文楷体', serif";
+            // 1. 寻找并解析 content.opf 获取元数据
+            let opfPath = "";
+            const containerFile = zip.file("META-INF/container.xml");
+            if (containerFile) {
+                const containerTxt = await containerFile.async("string");
+                const match = containerTxt.match(/full-path="([^"]+)"/);
+                if (match) opfPath = match[1];
+            }
+            if (!opfPath) {
+                // 兜底盲猜
+                opfPath = Object.keys(zip.files).find(name => name.endsWith('.opf')) || "";
+            }
 
-                const maxWidth = canvas.width * 0.9;
-                const startX = canvas.width / 2;
-                let startY = canvas.height * 0.40;
-                const lineHeight = titleFontSize * 1.25;
+            if (opfPath) {
+                const opfTxt = await zip.file(opfPath).async("string");
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(opfTxt, "text/xml");
 
-                let lines = [];
-                let currentLine = "";
-                for (let i = 0; i < title.length; i++) {
-                    let testLine = currentLine + title[i];
-                    let metrics = ctx.measureText(testLine);
-                    if (metrics.width > maxWidth && i > 0) {
-                        lines.push(currentLine);
-                        currentLine = title[i];
-                    } else {
-                        currentLine = testLine;
+                // 提取书名和作者填入输入框
+                const titleEl = xmlDoc.querySelector("title") || xmlDoc.querySelector("dc\\:title");
+                const creatorEl = xmlDoc.querySelector("creator") || xmlDoc.querySelector("dc\\:creator");
+                if (titleEl) document.getElementById('bookTitle').value = titleEl.textContent.trim();
+                if (creatorEl) document.getElementById('bookAuthor').value = creatorEl.textContent.trim();
+
+                // 寻找封面图片 ID
+                let coverId = "";
+                const metaCover = xmlDoc.querySelector('meta[name="cover"]');
+                if (metaCover) {
+                    coverId = metaCover.getAttribute("content");
+                }
+
+                let coverHref = "";
+                if (coverId) {
+                    const itemEl = xmlDoc.getElementById(coverId) || xmlDoc.querySelector(`item[id="${coverId}"]`);
+                    if (itemEl) coverHref = itemEl.getAttribute("href");
+                } else {
+                    // 如果没找到 meta 标签，盲找包含 cover 名字的图片
+                    coverHref = Object.keys(zip.files).find(name => name.toLowerCase().includes('cover') && (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg')));
+                }
+
+                if (coverHref) {
+                    // 转换为绝对/相对路径寻找 zip 内文件
+                    const baseDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+                    let fullCoverPath = coverHref.startsWith('/') ? coverHref.substring(1) : baseDir + coverHref;
+                    // 修复路径中可能存在的 ../
+                    fullCoverPath = fullCoverPath.replace(/[^\/]+\/\.\.\//g, "");
+
+                    const imgFile = zip.file(fullCoverPath) || zip.file(coverHref);
+                    if (imgFile) {
+                        extractedOriginalCoverExt = fullCoverPath.endsWith('.jpg') || fullCoverPath.endsWith('.jpeg') ? 'jpg' : 'png';
+                        extractedOriginalCoverType = extractedOriginalCoverExt === 'jpg' ? 'image/jpeg' : 'image/png';
+                        extractedOriginalCoverBlob = await imgFile.async("blob");
+                        console.log("原 ePUB 封面提取成功！");
                     }
                 }
-                lines.push(currentLine);
-                lines.forEach((line) => {
-                    ctx.fillText(line, startX, startY);
-                    startY += lineHeight;
-                });
+            }
+        }
 
-                const authorFontSize = Math.floor(canvas.width * 0.08);
-                ctx.font = authorFontSize + "px Kaiti, STKaiti, '华文楷体', serif";
-                const authorY = canvas.height * 0.7;
-                ctx.fillText(author, startX, authorY);
+        // 核心逻辑：从原 ePUB 中提取纯文本内容
+        async function extractTextFromEpub(file) {
+            const zip = await JSZip.loadAsync(file);
 
-                let outputType = 'image/png';
-                let quality = undefined;
-                if (imageBlob.type === 'image/jpeg' || imageBlob.type === 'image/jpg') {
-                    outputType = 'image/jpeg';
-                    quality = 0.8;
+            // 寻找 opf
+            let opfPath = "";
+            const containerFile = zip.file("META-INF/container.xml");
+            if (containerFile) {
+                const containerTxt = await containerFile.async("string");
+                const match = containerTxt.match(/full-path="([^"]+)"/);
+                if (match) opfPath = match[1];
+            }
+            if (!opfPath) opfPath = Object.keys(zip.files).find(name => name.endsWith('.opf')) || "";
+
+            if (!opfPath) throw new Error("无效的 ePUB 格式：找不到 content.opf");
+
+            const opfTxt = await zip.file(opfPath).async("string");
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(opfTxt, "text/xml");
+
+            // 根据 spine 节点的顺序读取 itemref，确保章节不乱序
+            const itemrefs = xmlDoc.querySelectorAll("spine itemref");
+            const items = xmlDoc.querySelectorAll("manifest item");
+
+            let itemMap = {};
+            items.forEach(item => {
+                itemMap[item.getAttribute("id")] = item.getAttribute("href");
+            });
+
+            const baseDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+            let fullPlainText = "";
+
+            for (let ref of itemrefs) {
+                const idref = ref.getAttribute("idref");
+                let href = itemMap[idref];
+                if (!href) continue;
+
+                let fullPath = baseDir + href;
+                fullPath = fullPath.replace(/[^\/]+\/\.\.\//g, ""); // 处理路径跳转
+
+                const htmlFile = zip.file(fullPath) || zip.file(href);
+                if (htmlFile) {
+                    const htmlTxt = await htmlFile.async("string");
+                    const htmlDoc = parser.parseFromString(htmlTxt, "text/html");
+
+                    // 智能提取：先提取标题，再提取段落
+                    const h1 = htmlDoc.querySelector("h1, h2, h3");
+                    if (h1 && h1.textContent.trim()) {
+                        fullPlainText += "\n\n" + h1.textContent.trim() + "\n\n";
+                    }
+
+                    const paragraphs = htmlDoc.querySelectorAll("p");
+                    if (paragraphs.length > 0) {
+                        paragraphs.forEach(p => {
+                            if (p.textContent.trim()) {
+                                fullPlainText += p.textContent.trim() + "\n";
+                            }
+                        });
+                    } else {
+                        // 如果没有 P 标签，直接拿 body 的纯文本
+                        let bodyText = htmlDoc.body ? htmlDoc.body.textContent : htmlDoc.documentElement.textContent;
+                        fullPlainText += bodyText + "\n";
+                    }
                 }
-                canvas.toBlob((blob) => { resolve(blob); }, outputType, quality);
-            };
-            img.onerror = () => { resolve(imageBlob); };
-        });
-    }
-
-    convertBtn.addEventListener('click', async () => {
-        const file = txtFileInput.files[0];
-        if (!file) return;
-
-        const title = document.getElementById('bookTitle').value.trim() || file.name.replace('.txt', '');
-        const author = document.getElementById('bookAuthor').value.trim() || '未知';
-
-        statusDiv.innerText = '正在准备资源...';
-        convertBtn.disabled = true;
-
-        let rawCoverBlob = null;
-        let coverType = 'image/png';
-        let coverExt = 'png';
-
-        if (coverFileInput.files.length > 0) {
-            rawCoverBlob = coverFileInput.files[0];
-            coverType = rawCoverBlob.type;
-            coverExt = rawCoverBlob.type === 'image/jpeg' ? 'jpg' : 'png';
+            }
+            return fullPlainText;
         }
 
-        let finalCoverBlob = null;
-        if (rawCoverBlob) {
-            statusDiv.innerText = '正在绘制书名封面...';
-            finalCoverBlob = await drawTextOnCover(rawCoverBlob, title, author);
-            if (rawCoverBlob.type === 'image/jpeg' || rawCoverBlob.type === 'image/jpg') {
-                coverType = 'image/jpeg';
-                coverExt = 'jpg';
-            }
+        // 动态为封面图片绘制书名和作者（支持长书名自动换行）
+        function drawTextOnCover(imageBlob, title, author) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = URL.createObjectURL(imageBlob);
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    canvas.width = img.width || 600;
+                    canvas.height = img.height || 800;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    ctx.fillStyle = "#000";
+                    ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+                    ctx.shadowBlur = 8;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "top";
+
+                    const titleFontSize = Math.floor(canvas.width * 0.15);
+                    ctx.font = "bold " + titleFontSize + "px sans-serif";
+
+                    const maxWidth = canvas.width * 0.9;
+                    const startX = canvas.width / 2;
+                    let startY = canvas.height * 0.4;
+                    const lineHeight = titleFontSize * 1.25;
+
+                    let lines = [];
+                    let currentLine = "";
+
+                    for (let i = 0; i < title.length; i++) {
+                        let testLine = currentLine + title[i];
+                        let metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && i > 0) {
+                            lines.push(currentLine);
+                            currentLine = title[i];
+                        } else {
+                            currentLine = testLine;
+                        }
+                    }
+                    lines.push(currentLine);
+
+                    lines.forEach((line) => {
+                        ctx.fillText(line, startX, startY);
+                        startY += lineHeight;
+                    });
+
+                    const authorFontSize = Math.floor(canvas.width * 0.08);
+                    ctx.font = authorFontSize + "px sans-serif";
+
+                    const authorY = canvas.height * 0.7;
+                    ctx.fillText(author, startX, authorY);
+
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/png');
+                };
+                img.onerror = () => {
+                    resolve(imageBlob);
+                };
+            });
         }
 
-        statusDiv.innerText = '正在读取文本...';
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const arrayBuffer = e.target.result;
-            let decoderStr = new TextDecoder('utf-8').decode(arrayBuffer);
-            if (decoderStr.includes('\ufffd')) {
-                try { decoderStr = new TextDecoder('gbk').decode(arrayBuffer); } catch(err){}
+        // 主转换按钮点击事件
+        convertBtn.addEventListener('click', async () => {
+            const file = sourceFileInput.files[0];
+            if (!file) return;
+
+            const isInputEpub = file.name.toLowerCase().endsWith('.epub');
+            const outputFormat = outputFormatSelect.value;
+            const title = document.getElementById('bookTitle').value.trim() || file.name.replace(/\.[^/.]+$/, "");
+            const author = document.getElementById('bookAuthor').value.trim() || '未知';
+
+            convertBtn.disabled = true;
+            let text = "";
+
+            // ---- 第一步：提取纯文本并进行清洗 ----
+            try {
+                if (isInputEpub) {
+                    statusDiv.innerText = '正在解压并提取原 ePUB 中的文本...';
+                    text = await extractTextFromEpub(file);
+                } else {
+                    statusDiv.innerText = '正在读取并检测 TXT 文本编码...';
+                    text = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            const arrayBuffer = e.target.result;
+                            let decoderStr = new TextDecoder('utf-8').decode(arrayBuffer);
+                            if (decoderStr.includes('\ufffd')) {
+                                try {
+                                    decoderStr = new TextDecoder('gbk').decode(arrayBuffer);
+                                } catch (err) { }
+                            }
+                            resolve(decoderStr);
+                        };
+                        reader.readAsArrayBuffer(file);
+                    });
+                }
+            } catch (err) {
+                statusDiv.innerText = '文本提取失败: ' + err.message;
+                convertBtn.disabled = false;
+                return;
             }
 
-            let text = decoderStr;
-
-            // 洗稿规则
+            // 文本/正则清洗
+            statusDiv.innerText = '正在执行替换清洗规则...';
             const ruleItems = document.querySelectorAll('.rule-item');
             ruleItems.forEach(item => {
                 const srcVal = item.querySelector('.src-text').value;
                 const dstVal = item.querySelector('.dst-text').value;
                 const isRegex = item.querySelector('.is-regex').checked;
+
                 if (srcVal) {
                     try {
                         let regex = isRegex ? new RegExp(srcVal, 'g') : new RegExp(srcVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g');
                         text = text.replace(regex, dstVal);
-                    } catch(e){}
+                    } catch (regexErr) {
+                        alert(`规则 [ ${srcVal} ] 语法错误已被略过！`);
+                    }
                 }
             });
 
-            statusDiv.innerText = '正在智能切分章节...';
-            const chapterRegex = /(^|\s)(第[0-9一二三四五六七八九十百千]+[章节卷回部折].*)/g;
-            let chapters = [];
-            let matches = [...text.matchAll(chapterRegex)];
-
-            if (matches.length === 0) {
-                chapters.push({ title: "正文", content: text });
+            // ---- 第二步：根据选择的目标格式输出 ----
+            if (outputFormat === 'txt') {
+                // 导出为纯文本 TXT
+                statusDiv.innerText = '正在生成并下载清洗后的 TXT 文件...';
+                const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+                saveAs(blob, `${title}_已清洗.txt`);
+                statusDiv.innerText = 'TXT 转换并清洗成功！已触发下载。';
+                convertBtn.disabled = false;
             } else {
-                if (matches[0].index > 0) {
-                    chapters.push({ title: "序言", content: text.substring(0, matches[0].index) });
+                // 导出为 ePUB
+                statusDiv.innerText = '正在准备封面资源...';
+                let coverBlob = null;
+                let coverType = 'image/png';
+                let coverExt = 'png';
+
+                const keepOriginal = keepOriginalCoverCheckbox.checked;
+
+                if (isInputEpub && keepOriginal && extractedOriginalCoverBlob) {
+                    // 情况 A：保持原封面
+                    coverBlob = extractedOriginalCoverBlob;
+                    coverType = extractedOriginalCoverType;
+                    coverExt = extractedOriginalCoverExt;
+                    statusDiv.innerText = '已复用原 ePUB 封面。';
+                } else if (coverFileInput.files.length > 0) {
+                    // 情况 B：用户上传了新封面，需绘制书名作者
+                    statusDiv.innerText = '正在为新封面绘制书名和作者...';
+                    const uCover = coverFileInput.files[0];
+                    coverBlob = await drawTextOnCover(uCover, title, author);
+                } else {
+                    // 情况 C：尝试抓取保底默认封面，并绘制书名作者
+                    try {
+                        let res = await fetch('cover.png');
+                        if (res.ok) {
+                            const defaultCoverBlob = await res.blob();
+                            statusDiv.innerText = '正在为默认保底封面绘制书名和作者...';
+                            coverBlob = await drawTextOnCover(defaultCoverBlob, title, author);
+                        }
+                    } catch (fetchErr) {
+                        console.log("未检测到默认封面文件，将生成无封面书籍。");
+                    }
                 }
-                for (let i = 0; i < matches.length; i++) {
-                    const start = matches[i].index;
-                    const end = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
-                    const chapTitle = matches[i][2].trim();
-                    const chapContent = text.substring(start + matches[i][0].length, end);
-                    chapters.push({ title: chapTitle, content: chapContent });
+
+                statusDiv.innerText = '正在切分章节...';
+                const chapterRegex = /(^|\s)(第[0-9一二三四五六七八九十百千]+[章节卷回部折].*)/g;
+                let chapters = [];
+                let matches = [...text.matchAll(chapterRegex)];
+
+                if (matches.length === 0) {
+                    chapters.push({ title: "正文", content: text });
+                } else {
+                    if (matches[0].index > 0) {
+                        chapters.push({ title: "序言", content: text.substring(0, matches[0].index) });
+                    }
+                    for (let i = 0; i < matches.length; i++) {
+                        const start = matches[i].index;
+                        const end = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
+                        const chapTitle = matches[i][2].trim();
+                        const chapContent = text.substring(start + matches[i][0].length, end);
+                        chapters.push({ title: chapTitle, content: chapContent });
+                    }
                 }
+
+                statusDiv.innerText = '正在本地打包 ePUB...';
+                try {
+                    await generateEpub(title, author, chapters, coverBlob, coverType, coverExt);
+                    statusDiv.innerText = 'ePUB 转换成功！已触发下载，请用阅读器打开。';
+                } catch (err) {
+                    statusDiv.innerText = '打包失败: ' + err.message;
+                }
+                convertBtn.disabled = false;
             }
+        });
 
-            statusDiv.innerText = '正在构建完美校验级 ePUB 3.0 结构...';
-            try {
-                await generateStrictEpub3(title, author, chapters, finalCoverBlob, coverType, coverExt);
-                statusDiv.innerText = '打包成功！已保存到您的下载目录。';
-            } catch (err) {
-                statusDiv.innerText = '打包失败: ' + err.message;
-            }
-            convertBtn.disabled = false;
-        };
-        reader.readAsArrayBuffer(file);
-    });
+        // 核心安全重构：彻底解决苹果图书 XML 自闭合报错 Bug
+        async function generateStrictEpub3(title, author, chapters, coverBlob, coverType, coverExt) {
+            const zip = new JSZip();
+            const uuid = `urn:uuid:${'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            })}`;
 
-    function escapeXml(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
+            // 1. mimetype (必须独立存储 STORE 且不压缩)
+            zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
-    // 核心安全重构：彻底解决苹果图书 XML 自闭合报错 Bug
-    async function generateStrictEpub3(title, author, chapters, coverBlob, coverType, coverExt) {
-        const zip = new JSZip();
-        const uuid = `urn:uuid:${'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        })}`;
-
-        // 1. mimetype (必须独立存储 STORE 且不压缩)
-        zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
-
-        // 2. 完美的元容器，注意 XML 自闭合
-        const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
+            // 2. 完美的元容器，注意 XML 自闭合
+            const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
     <rootfiles>
         <rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>
     </rootfiles>
 </container>`;
-        zip.folder("META-INF").file("container.xml", containerXml);
+            zip.folder("META-INF").file("container.xml", containerXml);
 
-        // 创建你要求的扁平子目录 Text/
-        const textFolder = zip.folder("Text");
+            // 创建你要求的扁平子目录 Text/
+            const textFolder = zip.folder("Text");
 
-        if (coverBlob) {
-            zip.file(`cover.${coverExt}`, coverBlob);
-        }
+            if (coverBlob) {
+                zip.file(`cover.${coverExt}`, coverBlob);
+            }
 
-        let manifestItems = '';
-        let spineItems = '';
-        let htmlNavLinks = '';
-        let ncxNavPoints = '';
+            let manifestItems = '';
+            let spineItems = '';
+            let htmlNavLinks = '';
+            let ncxNavPoints = '';
 
-        if (coverBlob) {
-            manifestItems += `    <item id="cover-image" href="cover.${coverExt}" media-type="${coverType}" properties="cover-image" />\n`;
-        }
+            if (coverBlob) {
+                manifestItems += `    <item id="cover-image" href="cover.${coverExt}" media-type="${coverType}" properties="cover-image" />\n`;
+            }
 
-        // 3. 构建全量章节 (采用绝对完美的 XHTML5 XML 自闭合约束标准)
-        chapters.forEach((chap, index) => {
-            const id = `chap_${index + 1}`;
-            const hrefPath = `Text/${id}.xhtml`; // 统一后缀名防止阅读器底层混淆
-            const safeTitle = escapeXml(chap.title);
-            const safeContent = escapeXml(chap.content)
-                .split('\n')
-                .map(line => line.trim() ? `<p>${line.trim()}</p>` : '')
-                .join('\n');
+            // 3. 构建全量章节 (采用绝对完美的 XHTML5 XML 自闭合约束标准)
+            chapters.forEach((chap, index) => {
+                const id = `chap_${index + 1}`;
+                const hrefPath = `Text/${id}.xhtml`; // 统一后缀名防止阅读器底层混淆
+                const safeTitle = escapeXml(chap.title);
+                const safeContent = escapeXml(chap.content)
+                    .split('\n')
+                    .map(line => line.trim() ? `<p>${line.trim()}</p>` : '')
+                    .join('\n');
 
-            // 【核心修正点】：这里的 <meta /> 必须自闭合！
-            const htmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+                // 【核心修正点】：这里的 <meta /> 必须自闭合！
+                const htmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
 <head>
@@ -377,19 +725,19 @@
 </body>
 </html>`;
 
-            textFolder.file(`${id}.xhtml`, htmlContent);
+                textFolder.file(`${id}.xhtml`, htmlContent);
 
-            manifestItems += `    <item id="${id}" href="${hrefPath}" media-type="application/xhtml+xml" />\n`;
-            spineItems += `    <itemref idref="${id}" />\n`;
-            htmlNavLinks += `        <li><a href="${hrefPath}">${safeTitle}</a></li>\n`;
-            ncxNavPoints += `        <navPoint id="navpoint-${index + 1}" playOrder="${index + 1}">
+                manifestItems += `    <item id="${id}" href="${hrefPath}" media-type="application/xhtml+xml" />\n`;
+                spineItems += `    <itemref idref="${id}" />\n`;
+                htmlNavLinks += `        <li><a href="${hrefPath}">${safeTitle}</a></li>\n`;
+                ncxNavPoints += `        <navPoint id="navpoint-${index + 1}" playOrder="${index + 1}">
             <navLabel><text>${safeTitle}</text></navLabel>
             <content src="${hrefPath}" />
         </navPoint>\n`;
-        });
+            });
 
-        // 4. 生成 ePUB 3.0 的唯一官方核心 HTML 导航文件 (nav.xhtml)，同样严格闭合
-        const navHtmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+            // 4. 生成 ePUB 3.0 的唯一官方核心 HTML 导航文件 (nav.xhtml)，同样严格闭合
+            const navHtmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">
 <head>
@@ -404,9 +752,9 @@ ${htmlNavLinks}        </ol>
     </nav>
 </body>
 </html>`;
-        zip.file("nav.xhtml", navHtmlContent);
+            zip.file("nav.xhtml", navHtmlContent);
 
-        const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
+            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
     <head>
         <meta name="dtb:uid" content="${uuid}" />
@@ -418,15 +766,15 @@ ${htmlNavLinks}        </ol>
     <navMap>
 ${ncxNavPoints}    </navMap>
 </ncx>`;
-        zip.file("toc.ncx", ncxContent);
+            zip.file("toc.ncx", ncxContent);
 
-        // 5. 声明 properties="nav"，这是唤醒苹果底部系统原生目录的“最高权限指令”
-        manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` +
-            `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />\n` + manifestItems;
+            // 5. 声明 properties="nav"，这是唤醒苹果底部系统原生目录的“最高权限指令”
+            manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` +
+                `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />\n` + manifestItems;
 
-        // 6. 生成没有任何语法漏洞的现代化 content.opf (根目录)
-        const coverMeta = coverBlob ? `\n        <meta name="cover" content="cover-image"/>` : '';
-        const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
+            // 6. 生成没有任何语法漏洞的现代化 content.opf (根目录)
+            const coverMeta = coverBlob ? `\n        <meta name="cover" content="cover-image"/>` : '';
+            const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">
     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
         <dc:title>${escapeXml(title)}</dc:title>
@@ -440,13 +788,14 @@ ${manifestItems}    </manifest>
     <spine toc="ncx">
 ${spineItems}    </spine>
 </package>`;
-        zip.file("content.opf", contentOpf);
+            zip.file("content.opf", contentOpf);
 
-        // 7. 防 Safari 二进制拦截混淆导出
-        const baseBlob = await zip.generateAsync({ type: "blob" });
-        const blob = new Blob([baseBlob], { type: "application/octet-stream" });
-        saveAs(blob, `${title}.epub.bin`);
-    }
-</script>
+            // 7. 防 Safari 二进制拦截混淆导出
+            const baseBlob = await zip.generateAsync({ type: "blob" });
+            const blob = new Blob([baseBlob], { type: "application/octet-stream" });
+            saveAs(blob, `${title}.epub.bin`);
+        }
+    </script>
 </body>
+
 </html>

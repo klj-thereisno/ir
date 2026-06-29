@@ -21,7 +21,10 @@ async function generate() {
 
     const chapters = [
         { title: '第一章 起始', content: '这是第一章的内容。\n这是第二行。' },
-        { title: '第二章 延续', content: '这是第二章的内容。' }
+        { title: '第二章 延续', content: '这是第二章的内容。' },
+        { title: '第三章 延续', content: '这是第三章的内容。' },
+        { title: '第四章 延续', content: '这是第四章的内容。' },
+        { title: '第五章 延续', content: '这是第五章的内容。' }
     ];
 
     let manifestItems = '';
