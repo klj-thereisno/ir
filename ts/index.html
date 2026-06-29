@@ -660,7 +660,12 @@
                 convertBtn.disabled = false;
             }
         });
-
+        function escapeXml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
         // 核心安全重构：彻底解决苹果图书 XML 自闭合报错 Bug
         async function generateStrictEpub3(title, author, chapters, coverBlob, coverType, coverExt) {
             const zip = new JSZip();
