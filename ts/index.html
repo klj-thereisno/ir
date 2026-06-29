@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图书本地智能转换与清洗工具</title>
+    <link rel="apple-touch-icon" href="logo.png">
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <style>
@@ -225,7 +226,7 @@
         </div>
         <div class="form-group">
             <label>作者</label>
-            <input type="text" id="bookAuthor" placeholder="选填" value="未知">
+            <input type="text" id="bookAuthor" placeholder="未知">
         </div>
 
         <div id="coverSection" class="form-group">
@@ -474,14 +475,13 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    canvas.width = img.width || 600;
-                    canvas.height = img.height || 800;
+                    canvas.width = img.width || 160;
+                    canvas.height = img.height || 240;
 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                     ctx.fillStyle = "#000";
-                    ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = "rgba(255, 255, 255, 0.7)";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "top";
 
