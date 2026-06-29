@@ -594,7 +594,6 @@
         if (outputFormat === 'txt') {
             // 导出为纯文本 TXT
             statusDiv.innerText = '正在生成并下载清洗后的 TXT 文件...';
-<!--            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });-->
             const blob = new Blob([text], { type: "application/octet-stream" });
             saveAs(blob, `${title}_已清洗.txt`);
             statusDiv.innerText = 'TXT 转换并清洗成功！已触发下载。';
