@@ -652,7 +652,7 @@
 
                 statusDiv.innerText = '正在本地打包 ePUB...';
                 try {
-                    await generateEpub(title, author, chapters, coverBlob, coverType, coverExt);
+                    await generateStrictEpub3(title, author, chapters, coverBlob, coverType, coverExt);
                     statusDiv.innerText = 'ePUB 转换成功！已触发下载，请用阅读器打开。';
                 } catch (err) {
                     statusDiv.innerText = '打包失败: ' + err.message;
