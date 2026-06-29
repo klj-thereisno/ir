@@ -696,6 +696,7 @@
             let manifestItems = '';
             let spineItems = '';
             let htmlNavLinks = '';
+            let ncxNavPoints = '';
 
             if (coverBlob) {
                 manifestItems += `    <item id="cover-image" href="cover.${coverExt}" media-type="${coverType}" properties="cover-image" />\n`;
@@ -711,7 +712,7 @@
                     .map(line => line.trim() ? `<p>${line.trim()}</p>` : '')
                     .join('\n');
 
-                // 【核心修正点】：这里的 <meta /> 必须自闭合！
+                // 为每章添加唯一锚点与 body id，帮助阅读器精准跳转
                 const htmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
@@ -723,7 +724,8 @@
         p { text-indent: 2em; line-height: 1.6; margin: 0.6em 0; font-size: 1.1em; }
     </style>
 </head>
-<body>
+<body id="${id}-body">
+    <a id="${id}"></a>
     <h1>${safeTitle}</h1>
     ${safeContent}
 </body>
@@ -733,7 +735,11 @@
 
                 manifestItems += `    <item id="${id}" href="${hrefPath}" media-type="application/xhtml+xml" />\n`;
                 spineItems += `    <itemref idref="${id}" />\n`;
-                htmlNavLinks += `        <li><a href="${hrefPath}">${safeTitle}</a></li>\n`;
+                htmlNavLinks += `        <li><a href="${hrefPath}#${id}">${safeTitle}</a></li>\n`;
+                ncxNavPoints += `        <navPoint id="navpoint-${index + 1}" playOrder="${index + 1}">
+            <navLabel><text>${safeTitle}</text></navLabel>
+            <content src="${hrefPath}#${id}" />
+        </navPoint>\n`;
             });
 
             // 4. 生成 ePUB 3.0 的唯一官方核心 HTML 导航文件 (nav.xhtml)，同样严格闭合
@@ -760,8 +766,24 @@ ${htmlNavLinks}        </ol>
 </html>`;
             zip.file("nav.xhtml", navHtmlContent);
 
-            // 5. 以 EPUB 3 的 nav 文档为主，避免 Apple Books 误判目录导航
-            manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` + manifestItems;
+            // 生成 NCX 作为向后兼容的目录（某些阅读器仍然参考 NCX）
+            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+    <head>
+        <meta name="dtb:uid" content="${uuid}" />
+        <meta name="dtb:depth" content="1" />
+        <meta name="dtb:totalPageCount" content="0" />
+        <meta name="dtb:maxPageNumber" content="0" />
+    </head>
+    <docTitle><text>${escapeXml(title)}</text></docTitle>
+    <navMap>
+${ncxNavPoints}    </navMap>
+</ncx>`;
+            zip.file("toc.ncx", ncxContent);
+
+            // 以 EPUB3 的 nav 为主，同时保留 NCX 以提高 Apple Books 等兼容性
+            manifestItems = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />\n` +
+                `    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />\n` + manifestItems;
 
             // 6. 生成没有任何语法漏洞的现代化 content.opf (根目录)
             const coverMeta = coverBlob ? `\n        <meta name="cover" content="cover-image"/>` : '';
@@ -776,7 +798,7 @@ ${htmlNavLinks}        </ol>
     </metadata>
     <manifest>
 ${manifestItems}    </manifest>
-    <spine>
+    <spine toc="ncx">
 ${spineItems}    </spine>
 </package>`;
             zip.file("content.opf", contentOpf);
