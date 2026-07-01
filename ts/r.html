@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Gemini</title>
+    <link rel="icon" href="gemini.jpg" sizes="any" type="image/svg+xml">
+    <style>
+        :root {
+            --bg-main: #ffffff;
+            --bg-sidebar: #f0f4f9;
+            --sidebar-w: 68px;
+            --sidebar-exp: 280px;
+            --text-main: #1f1f1f;
+            --accent-blue: #0b57d0;
+            --accent-blue-bg: #c2e7ff;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            background-color: var(--bg-main); color: var(--text-main);
+            font-family: "Google Sans", Roboto, Arial, sans-serif;
+            display: flex; overflow: hidden;
+        }
+
+        /* --- 侧边栏 --- */
+        #sidebar {
+            width: var(--sidebar-w); background-color: var(--bg-sidebar);
+            display: flex; flex-direction: column; transition: width 0.2s;
+            flex-shrink: 0; overflow: hidden; white-space: nowrap; z-index: 100;
+        }
+        #sidebar.expanded { width: var(--sidebar-exp); }
+        .side-item {
+            display: flex; align-items: center; height: 48px; padding: 0 22px;
+            cursor: pointer; border-radius: 0 24px 24px 0; margin-right: 12px;
+        }
+        .side-item:hover { background-color: #e1e5e9; }
+        .side-icon { min-width: 24px; margin-right: 20px; display: flex; justify-content: center; }
+
+        /* --- 主容器：强制 100% 宽度 --- */
+        .main-container {
+            flex: 1; display: flex; flex-direction: column; position: relative; width: 0;
+        }
+
+        /* --- 顶部工具栏：固定右上角 --- */
+        .top-nav {
+            height: 64px; display: flex; align-items: center; padding: 0 24px;
+            flex-shrink: 0; width: 100%; box-sizing: border-box; z-index: 60;
+        }
+        .nav-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+        .avatar {
+            width: 32px; height: 32px; border-radius: 50%; background: #747775;
+            color: white; cursor: pointer; display: flex; align-items: center; 
+            justify-content: center; font-size: 14px; z-index: 70;
+        }
+
+        /* --- 内容区：完全左对齐流式 --- */
+        #chat-window { flex: 1; overflow-y: auto; padding: 20px 260px 200px 260px; }
+        .user-q-title { font-size: 32px; font-weight: 400; margin: 20px 0 40px 0; }
+        .gemini-row { display: flex; gap: 24px; width: 100%; margin-bottom: 48px; }
+        .gem-logo {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, #4285f4, #d96570);
+        }
+        .text-body { font-size: 16px; line-height: 1.8; color: #1f1f1f; white-space: pre-wrap; flex: 1; }
+
+        /* --- 底部框 --- */
+        .bottom-wrap {
+            position: absolute; bottom: 0px; left: 40px; right: 40px; display: flex; justify-content: center;
+        }
+        .input-box {
+            width: 70%; max-width: 1000px; background: #f0f4f9; border-radius: 32px;
+            padding: 16px 24px; display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .side-panel {
+    position: absolute;
+    top: 100px;
+    width: 180px;
+/*    background: #f8f9fa;*/
+/*    border: 1px solid #e0e0e0;*/
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+/*    box-shadow: 0 2px 6px rgba(0,0,0,0.05);*/
+    z-index: 50;
+    /* 核心修复：强制换行 */
+    word-break: break-all;      /* 允许在任何字符间断行，适合代码 */
+    overflow-wrap: break-word;  /* 兼容性更好的换行处理 */
+    white-space: normal;        /* 确保没有被上级样式设为 nowrap */
+}
+.left-panel { left: 20px; }
+.right-panel { right: 20px; }
+.panel-header { font-weight: bold; margin-bottom: 8px; color: #5f6368; border-bottom: 1px solid #eee; }
+/* 如果右侧面板使用了 <code> 标签，需要额外处理 */
+.right-panel code {
+    display: block;             /* 将 code 转为块级元素 */
+    white-space: pre-wrap;      /* 保留空格但允许自动换行 */
+}
+    </style>
+</head>
+<body>
+
+<input type="file" id="fileIn" style="display: none !important;" accept=".txt">
+<div id="sidebar">
+    <div class="side-item" onclick="toggleSidebar()" style="margin-top:12px">
+        <div class="side-icon"><svg viewBox="0 0 24 24" width="24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/></svg></div>
+    </div>
+    <div class="side-item">
+        <div class="side-icon"><svg width="24" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg></div>
+        <div class="side-text">发起新对话</div>
+    </div>
+    <div class="side-item" style="background:#d3e3fd;">
+        <div class="side-icon"><svg width="24" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg></div>
+        <div class="side-text">本地历史分析</div>
+    </div>
+    <div class="side-item" style="margin-top:auto; margin-bottom: 12px;">
+        <div class="side-icon"><svg width="24" viewBox="0 0 24 24"><path d="M13.85 22.25h-3.7l-.64-3.13c-.32-.09-.64-.22-.94-.39l-2.92 1.2-1.85-3.2 2.5-1.92c-.03-.18-.05-.37-.05-.56 0-.19.02-.38.05-.56l-2.5-1.92 1.85-3.2 2.92 1.2c.3-.17.62-.3.94-.39l.64-3.13h3.7l.64 3.13c.32.09.64.22.94.39l2.92-1.2 1.85 3.2-2.5 1.92c.03.18.05.37.05.56 0 .19-.02.38-.05.56l2.5 1.92-1.85 3.2-2.92-1.2c-.3.17-.62.3-.94.39l-.64 3.13zM12 15.5c1.93 0 3.5-1.57 3.5-3.5s-1.57-3.5-3.5-3.5-3.5 1.57-3.5 3.5 1.57 3.5 3.5 3.5z" fill="currentColor"/></svg></div>
+        <div class="side-text">设置和帮助</div>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="top-nav">
+        <div style="font-size: 20px; color: #5f6368;">Gemini</div>
+        <div class="nav-right">
+            <button class="upgrade-btn" style="background:var(--accent-blue-bg); color:var(--accent-blue); border:none; border-radius:20px; padding:8px 16px; cursor:pointer;">✨ 升级到 Google AI Plus</button>
+            <div class="avatar" id="avatarBtn">U</div>
+        </div>
+    </div>
+
+    <div id="chat-window">
+        <div id="content-list">
+            <div class="chat-block" id="fake-header">
+                <div class="user-q-title">问问 Gemini</div>
+                <div class="gemini-row">
+                    <div class="gem-logo"></div>
+                    <div class="text-body">#### **final字段的特殊语义**
+根据Java内存模型（JMM）：
+1. **final字段的初始化安全**：构造器完成时，final字段的值对所有线程可见
+2. **不需要额外的内存屏障**：final字段的写入有特殊的内存语义
+3. **禁止指令重排序**：防止构造器逸出
+
+```java
+value class ImmutableData {
+    private final int id;      // final保证安全初始化
+    private final String name; // final保证安全初始化
+    
+    // 构造完成后，所有线程看到的都是完全初始化的对象
+    public ImmutableData(int id, String name) {
+        this.id = id;
+        this.name = name;
+        // JVM保证：final字段在构造函数完成前对其他线程不可见
+    }
+}
+## **总结：为什么"无锁"且"线程安全"**
+
+1. **不可变性**：创建后状态不能改变
+2. **无副作用的方法**：所有操作返回新对象
+3. **安全发布**：final字段保证构造完成后的可见性
+4. **无数据竞争**：没有写入操作，只有读取
+5. **无需同步**：因为没有共享的可变状态需要保护
+6. **可预测的行为**：在多线程环境中的行为是确定性的
+
+值对象通过**设计上的不可变性**，从根本上消除了并发编程中最常见的问题：**数据竞争和状态不一致**。这就是为什么它们被称为"天然线程安全"和"无锁"的。</div>
+                </div>
+            </div>
+        </div>
+        <div id="loader" style="height: 50px;"></div>
+        <div class="side-panel left-panel">
+    <div class="panel-header">Context Links</div>
+    <div class="panel-content">
+测试步骤<br/>
+
+1. 在一个终端运行这个Python脚本：<br/>
+   python your_script_name.py<br/>
+   你会看到 "资源 ... 尚不存在，等待中..."<br/>
+
+2. 在另一个终端（Redis CLI）创建这个键：<br/>
+   127.0.0.1:6379> SET config:new_feature_flag "ENABLE_NEW_UI_V2"<br/>
+
+3. 切换回第一个终端，你会看到脚本检测到变化，执行了事务中的业务逻辑，并打印出结果，然后退出。
+    </div>
+</div>
+
+<div class="side-panel right-panel">
+    <div class="panel-content">Quick Snippets</div>
+    <div class="panel-content">
+                    方法 1：直接使用 tasklist 和 findstr<br/>
+cmd<br/>
+tasklist /v | findstr /i /c:"App"<br/>
+/v：显示详细任务信息（包括窗口标题/启动类等）<br/>
+<br/>
+/i：忽略大小写<br/>
+
+/c:"App"：搜索包含 "App" 的字符串<br/>
+方法 2：如果需要更精确匹配启动类<br>
+如果 "App" 是进程的 启动类名（Window Title/Image Name），可以尝试：<br/>
+    </div>
+</div>
+    </div>
+
+    <div class="bottom-wrap">
+        <div class="input-box">
+            <div style="color:#5f6368;">问问 Gemini</div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+
+
+    let textData = "";
+    let offset = 0;
+    let fileName = "";
+    const CHUNK = 3000;
+    const KEEP_MAX = 3;
+const chatWindow = document.getElementById('chat-window');
+// --- 快捷键逻辑 ---
+    window.addEventListener('keydown', (e) => {
+        // Ctrl: 向下翻页 (PageDown)
+        if (e.key === "Control") {
+            e.preventDefault();
+            const scrollAmount = chatWindow.clientHeight * 0.2;
+            // chatWindow.scrollBy(0, scrollAmount);
+            chatWindow.scrollBy({ top: 200, behavior: 'smooth' });
+        }
+        // Shift: 回到顶部
+        if (e.key === "Shift") {
+            e.preventDefault();
+            chatWindow.scrollTo(0, 0);
+        }
+    });
+
+    // 修复后的头像点击逻辑
+    const avatar = document.getElementById('avatarBtn');
+    const fileIn = document.getElementById('fileIn');
+    
+    avatar.addEventListener('click', function(e) {
+        e.preventDefault();
+        fileIn.click();
+    });
+
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); }
+
+    fileIn.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        fileName = file.name;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            textData = ev.target.result;
+            // 进度记忆逻辑
+            const saved = localStorage.getItem(fileName);
+            offset = saved ? parseInt(saved) : 0;
+            
+            const list = document.getElementById('content-list');
+            const header = document.getElementById('fake-header');
+            list.innerHTML = '';
+            list.appendChild(header);
+            render();
+        };
+        reader.readAsText(file);
+    });
+
+    function render() {
+        if(!textData || offset >= textData.length) return;
+        const part = textData.slice(offset, offset + CHUNK);
+        offset += CHUNK;
+        localStorage.setItem(fileName, offset - CHUNK);
+
+        const block = document.createElement('div');
+        block.className = 'chat-block';
+        block.innerHTML = `<div class="gemini-row"><div class="gem-logo"></div><div class="text-body">${part.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}</div></div>`;
+        document.getElementById('content-list').appendChild(block);
+
+        // 动态回收逻辑：只保留掩护内容 + 最近 3 个片段
+        const blocks = document.getElementById('content-list').getElementsByClassName('chat-block');
+        if (blocks.length > KEEP_MAX + 1) {
+            document.getElementById('content-list').removeChild(blocks[1]);
+        }
+    }
+
+    const obs = new IntersectionObserver((entries) => {
+        if(entries[0].isIntersecting && textData) setTimeout(render, 400);
+    }, { root: document.getElementById('chat-window'), threshold: 0.1 });
+    obs.observe(document.getElementById('loader'));
+
+</script>
+</body>
+</html>
